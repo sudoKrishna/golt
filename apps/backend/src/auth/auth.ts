@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {prisma} from "@repo/db"
 import * as z from "zod";
+import { requireAuth } from "../middlewares/auth.middleware";
 
 
 const router = Router();
@@ -126,5 +127,47 @@ router.post("/auth/login" , async(req , res, next) => {
         next(error)
     }
 })
+router.get("/auth/me" ,requireAuth, async (req ,res ,next) => {
+try {
+    const ownerId = (req as any).ownerId as string;
 
+    const user = await prisma.user.findUnique({
+        where : {id : ownerId },
+        select : {id : true, email : true , name : true}
+    })
+
+    if(!user) {
+        return res.status(404).json({
+            error : "user not found"
+        })
+    }
+
+    return res.status(400).json({
+        error : "user not found"
+    })
+} catch (error) {
+    next(error)
+}
+})
+router.get("/auth/me", requireAuth, async (req , res, next) => {
+    try {
+
+        const ownerId = (req as any).ownerId as string;
+        
+        const user = await prisma.user.findUnique({
+            where : {id : ownerId},
+            select : {id : true , email : true , name : true}
+        })
+
+        if(!user) {
+            return res.status(404).json({
+                error : "user not found"
+            })
+        }
+
+        return res.status(200).json({user})
+    } catch (error) {
+        next(error)
+    }
+})
 export default router;
