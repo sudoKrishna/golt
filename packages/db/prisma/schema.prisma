@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String  @unique
+  passwordHash String
+  createdAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project[]
+}
+
+enum SandboxStatus {
+  idle
+  creating
+  running
+  error
+  stopped
+}
+
+model Project {
+  id  String @id @default(cuid())
+  name String
+  ownerId String
+  sandboxId String
+  previewUrl String?
+  sanboxStatus SandboxStatus @default(idle)
+  createAt DateTime @default(now())
+  updateAt DateTime  @updatedAt
+  owner User  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sandbox SandboxPod?
+  message Message[]
+  projectFile ProjectFile[]
+
+  @@index([ownerId])
+
+}
+model SandboxPod {
+id String @id @default(cuid())
+projectId String @unique
+containerId String?
+status SandboxStatus @default(idle)
+lastHeartbeat DateTime?
+createdAt  DateTime @default(now())
+updatedAt DateTime @updatedAt
+
+project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+}
+
+enum Role {
+  user
+  assistant
+  system
+}
+
+model Message {
+  id String @id @default(cuid())
+  projectId  String
+  role  Role
+  content  String
+  createdAt DateTime @default(now())
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ProjectFile {
+  id String @id @default(cuid())
+  projectId String
+  path String
+  content String
+  updateAt DateTime @updatedAt
+  project Project @relation(fields: [projectId] ,references: [id], onDelete: Cascade)
+  @@unique([projectId , path])
+  @@index([projectId])
+}
+// Conversation (agar ek project me multiple chat threads chahiye)
+// Deployment (Vercel/Netlify deployment history)
+// ProjectVersion (undo/version history)
+// Team aur ProjectMember (collaboration)
+// ApiKey (OpenAI/Anthropic keys per user)
+// Usage (token usage aur billing)
+// Folder (nested folder structure agar files ko tree format me manage karna ho)
