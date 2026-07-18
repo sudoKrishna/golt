@@ -1,5 +1,5 @@
-import Dockerode from "dockerode";
-
+import Dockerode, { Container } from "dockerode";
+import { WebSocket } from "ws";
 
 const docker = new Dockerode({
     socketPath : "/var/run/docker.sock",
@@ -51,6 +51,66 @@ export async function startSandbox(projectId : string , files : GeneratedFile[])
 
     return info.Id;
 }
+export async function stopSandbox(containerId :string) {
+ try {
+       const container = docker.getContainer(containerId)
+   
+       await container.stop({ t : 10})
+      console.log(`Container ${containerId} has successfully stop `)
+   
+       await container.remove({force : true})
+     console.log(`container ${containerId} has remove successfully`)
+ } catch (error :any) {
+    if(error.statusCode === 404) return;
+    throw error
+ }
+}
 
+export async function execSandbox(containerId : string, command : any , ws : WebSocket) {
+    const container = docker.getContainer(containerId)
+
+    const exec = await container.exec({
+        Cmd:  ["sh" , "-c" , command], // sh -c => run with the help of shell
+        AttachStderr: true,
+        AttachStdout : true,
+        WorkingDir : "/app",
+    })
+
+    const stream = await exec.start({hijack : true , stdin : false});
+
+    return new Promise((resolve , reject) => {
+       let output = ""
+
+       const stdout  = new (require("stream").PassThrough)();
+       const stderr  = new (require("stream").PassThrough)();
+
+       docker.modem.demuxStream(stream ,stdout , stderr);
+       
+        stdout.on("data", (chunk : Buffer) => {
+            const text = chunk.toString()
+            output += text;
+
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type : "output" , content : text}))
+            }
+        })
+        stderr.on("data" , (chunk : Buffer) => {
+            const text = chunk.toString()
+            output += text;
+
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type : "error" , content : text}))
+            }
+        })
+
+        stream.on("end" , () => resolve(output.trim()))
+
+        stream.on("error", (err : Error) => reject(err))
+
+   
+    })
+
+   
+}
 
 export default docker
