@@ -47,13 +47,13 @@ router.get("/projects" , async (req , res , next) => {
 
 router.get("projects/:id" , async (req , res, next) => {
    try {
-     const ownerId  = (req as any).orderId as string
+     const ownerId  = (req as any).ownerId as string
      const {id} = req.params;
  
      const project = await prisma.project.findFirst({
          where : {id ,ownerId},
          include : {
-             files : true,
+             projectFile : true,
              message : {
                  orderBy  : {createdAt : "asc"}
              }
