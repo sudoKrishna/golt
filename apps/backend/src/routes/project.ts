@@ -1,5 +1,5 @@
 import { Router } from "express";
-import {prisma} from "@repo/db"
+import { prisma, withRetry } from "@repo/db"
 
 const router = Router()
 
@@ -19,13 +19,15 @@ router.post("/projects" , async (req , res, next) => {
             })
          }
 
-         const project = await prisma.project.create({
-            data : {
-                name, 
-                ownerId,
-                sandboxId
-            }
-         })
+         const project = await withRetry(() =>
+            prisma.project.create({
+                data : {
+                    name, 
+                    ownerId,
+                    sandboxId
+                }
+            })
+         )
 
          return res.status(201).json({project})
     } catch (error) {
@@ -37,10 +39,12 @@ router.get("/projects" , async (req , res , next) => {
     const ownerId = (req as any) as string
     const {project} = req.body;
 
-    const projects = await prisma.project.findMany({
-        where : {ownerId},
-        orderBy : {createAt : "desc"}
-    })
+    const projects = await withRetry(() =>
+        prisma.project.findMany({
+            where : {ownerId},
+            orderBy : {createAt : "desc"}
+        })
+    )
 
     return res.status(200).json({projects})
 })
@@ -50,15 +54,17 @@ router.get("projects/:id" , async (req , res, next) => {
      const ownerId  = (req as any).ownerId as string
      const {id} = req.params;
  
-     const project = await prisma.project.findFirst({
-         where : {id ,ownerId},
-         include : {
-             projectFile : true,
-             message : {
-                 orderBy  : {createdAt : "asc"}
-             }
-         }
-     })
+     const project = await withRetry(() =>
+        prisma.project.findFirst({
+            where : {id ,ownerId},
+            include : {
+                projectFile : true,
+                message : {
+                    orderBy  : {createdAt : "asc"}
+                }
+            }
+        })
+     )
  
      if(!project) {
          return res.status(400).json({
@@ -79,22 +85,28 @@ router.delete("projects/:id" , async (req , res, next) => {
      const ownerId = (req as any).ownerId as string
      const {id} = req.params;
  
-     const project = prisma.project.findFirst({
-         where : {id, ownerId},
- 
-     })
+     const project = await withRetry(() =>
+        prisma.project.findFirst({
+            where : {id, ownerId},
+        })
+     )
+
      if(!project) {
          return res.status(400).json({
              error : "project not found"
          })
      }
  
-     await prisma.project.delete({
-         where : {id}
-     })
+     await withRetry(() =>
+        prisma.project.delete({
+            where : {id}
+        })
+     )
  
      return res.status(200).json({message : "Project deleted"})
    } catch (error) {
     next(error)
    }
 })
+
+export default router;
