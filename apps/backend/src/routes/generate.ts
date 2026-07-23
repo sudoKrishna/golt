@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
-import { prisma } from "@repo/db";
+import { prisma, withRetry } from "@repo/db";
 import { generateCode, parseFiles } from "../lib/gemini";
 
 const router = Router();
@@ -16,22 +16,27 @@ router.post("/generate/:projectId",requireAuth,  async (req , res , next) => {
      const  projectId  = req.params.projectId as string;
      const {prompt} = req.body;
 
-     const project = await prisma.project.findFirst({
-        where : {
-            id : projectId,
-            ownerId : ownerId
-        },
-     })
+     const project = await withRetry(() =>
+        prisma.project.findFirst({
+            where : {
+                id : projectId,
+                ownerId : ownerId
+            },
+        })
+     )
 
      if(!project) {
         return res.status(404).json({
             error : "Project was not found"
         })
      }
-     const existingFiles = await prisma.projectFile.findMany({
-        where : {projectId},
-        select : {path : true , content : true}
-     })
+
+     const existingFiles = await withRetry(() =>
+        prisma.projectFile.findMany({
+            where : {projectId},
+            select : {path : true , content : true}
+        })
+     )
 
      res.setHeader("Content-Type" , "text/event-stream");
      res.setHeader("Cache-Control" , "no-cache");
@@ -59,24 +64,27 @@ router.post("/generate/:projectId",requireAuth,  async (req , res , next) => {
      
      await Promise.all(
         files.map((file) => 
-            prisma.projectFile.upsert({
-                where : {
-                    projectId_path : {
-                        projectId,
-                        path : file.path,
+            withRetry(() =>
+                prisma.projectFile.upsert({
+                    where : {
+                        projectId_path : {
+                            projectId,
+                            path : file.path,
+                        },
                     },
-                },
-                update : {
-                    content : file.content,
-                },
-                create : {
-                    projectId ,
-                    path : file.path,
-                    content : file.content
-                }
-            })
+                    update : {
+                        content : file.content,
+                    },
+                    create : {
+                        projectId ,
+                        path : file.path,
+                        content : file.content
+                    }
+                })
+            )
         )
      )
+
      sendSSE(res ,  {
         type : "done",
         files,
@@ -85,3 +93,4 @@ router.post("/generate/:projectId",requireAuth,  async (req , res , next) => {
      res.end();
 
 })
+export default router;
