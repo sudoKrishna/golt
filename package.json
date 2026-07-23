@@ -29,15 +29,23 @@
     "packages/*"
   ],
   "dependencies": {
+    "@google/genai": "^2.12.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@types/bcrypt": "^6.0.0",
+    "@types/dockerode": "^4.0.1",
     "@types/express": "^5.0.6",
+    "@types/ioredis": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/ws": "^8.18.1",
     "bcrypt": "^6.0.0",
+    "dockerode": "^5.0.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "redis": "^6.1.0",
+    "ws": "^8.21.1"
   }
 }
