@@ -1,4 +1,4 @@
-import { Router, type NextFunction} from "express";
+import { Router} from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import {prisma} from "@repo/db"
