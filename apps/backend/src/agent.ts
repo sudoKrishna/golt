@@ -1,11 +1,11 @@
 import { prisma } from "@repo/db";
 import { emitToProject } from "./ws";
-import { ensureSandbox } from "./sandbox";
+import { ensureSandbox, restartDevServer } from "./sandbox";
 import { askLLM, assistantMessage, toolResultMessage, type ToolCall } from "./gemini";
 import { TOOL_DEFINITIONS, executeTool } from "./tools";
 import { execInContainer } from "./e2b";
 import { SYSTEM_PROMPT } from "./systemPrompt";
-import { clarificationTool, CLARIFY_MARKER } from "./tools/clarification.tool";
+import { clarificationTool, proceedTool, CLARIFY_MARKER } from "./tools/clarification.tool";
 
 
 export type ClarificationQuestion = {
@@ -97,9 +97,6 @@ export async function runAgent(projectId: string, userMessage: string) {
       ? decodeClarification(lastAssistantMessage.content) !== null
       : false;
 
-    const sandbox = await ensureSandbox(projectId)
-    const containerId = sandbox.containerId ?? null;
-
     const messages: any[] = [
       {
         role: "system",
@@ -120,25 +117,54 @@ export async function runAgent(projectId: string, userMessage: string) {
     ];
 
 
+    if (!alreadyAskedClarification) {
+      const gate = await askLLM(messages, [clarificationTool, proceedTool], "required");
+      const gateCall = gate.toolCalls[0];
+
+      console.log(`[AGENT] clarification gate ->`, gateCall?.name ?? "(no call)");
+
+      const gateArgs = gateCall?.args as
+        | { reasoning?: string; questions?: ClarificationQuestion[] }
+        | undefined;
+
+
+      if (gateCall?.name === "ask_clarification" && (gateArgs?.questions?.length ?? 0) > 0) {
+        const args = gateCall.args as { reasoning: string; questions: ClarificationQuestion[] };
+        const questions = args.questions ?? [];
+
+        emitToProject(projectId, "agent:clarification", {
+          reasoning: args.reasoning,
+          questions,
+        });
+
+        const encoded = encodeClarification(args.reasoning, questions);
+
+        await prisma.message.create({
+          data: { projectId, role: "assistant", content: encoded },
+        });
+
+        emitToProject(projectId, "agent:done", { summary: encoded });
+        return;
+      }
+    }
+
+    const sandbox = await ensureSandbox(projectId)
+    const containerId = sandbox.containerId ?? null;
+
     let iteration = 0;
     let finalSummary = "";
     let isDone = false;
-    let isClarifying = false;
+    let wroteFiles = false;
 
 
     while (iteration < MAX_ITERATIONS && !isDone) {
       iteration++;
       console.log(`iteration ${iteration}`)
 
-
-      const tools = iteration === 1 && !alreadyAskedClarification
-        ? [...TOOL_DEFINITIONS, clarificationTool]
-        : TOOL_DEFINITIONS;
-
-      const { toolCalls, text } = await askLLM(messages, tools);
+      const { toolCalls, text } = await askLLM(messages, TOOL_DEFINITIONS);
 
       if (text) {
-        emitToProject(projectId, "agent:thinking", { text })
+        emitToProject(projectId, "agent:token", { text })
       }
 
       if (toolCalls.length === 0) {
@@ -152,21 +178,6 @@ export async function runAgent(projectId: string, userMessage: string) {
         console.log(`[AGENT] calling tool: ${call.name}`);
         emitToProject(projectId, "agent:tool_call", { tool: call.name, args: call.args })
 
-        if (call.name === "ask_clarification") {
-          const args = call.args as { reasoning: string; questions: ClarificationQuestion[] };
-          finalSummary = encodeClarification(args.reasoning, args.questions ?? []);
-          isDone = true;
-          isClarifying = true;
-
-          emitToProject(projectId, "agent:clarification", {
-            reasoning: args.reasoning,
-            questions: args.questions ?? [],
-          });
-
-          messages.push(toolResultMessage(call.id, "Question sent to the user."));
-          break;
-        }
-
         if (call.name === "done") {
           finalSummary = (call.args as { summary: string }).summary ?? "";
           isDone = true;
@@ -175,6 +186,8 @@ export async function runAgent(projectId: string, userMessage: string) {
 
           break
         }
+
+        if (call.name === "write_file") wroteFiles = true;
 
         const result = await executeTool(call.name, call.args, projectId, containerId);
         console.log(`[agent] ${call.name} result:`, result.slice(0, 120));
@@ -185,22 +198,17 @@ export async function runAgent(projectId: string, userMessage: string) {
       }
     }
 
-    if (!isDone && !isClarifying && containerId) {
+    if (wroteFiles && containerId) {
       console.log("Installing dependencies ...")
 
-      const install = await execWithRetry(containerId, "bun install")
+      const install = await execWithRetry(containerId, "cd /app && bun install")
 
       console.log("Install Exit Code:", install.exitCode)
       console.log("Install stdout:\n", install.stdout)
       console.log("install stderr:\n", install.stderr)
 
-      console.log("Building project ...")
-
-      const build = await execInContainer(containerId, "npm run build")
-
-      console.log("Build Exit Code:", build.exitCode);
-      console.log("Build stdout:\n", build.stdout);
-      console.log("Build stderr:\n", build.stderr);
+      await restartDevServer(containerId);
+      emitToProject(projectId, "preview:reloaded", {});
     }
 
     if (!isDone && !finalSummary) {
