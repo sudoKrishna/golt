@@ -66,6 +66,8 @@ type Store = {
     selectedFile:    File | null;
     isAgentThinking: boolean;
     previewUrl:      string | null;
+    previewNonce:    number;
+    activeTab:       string;
     currentProject:  Project | null;
 
     setMessages:        (messages: Message[]) => void;
@@ -77,6 +79,8 @@ type Store = {
     setSelectedFile:    (file: File | null) => void;
     setIsAgentThinking: (bool: boolean) => void;
     setPreviewUrl:      (url: string | null) => void;
+    reloadPreview:      () => void;
+    setActiveTab:       (tab: string) => void;
     setCurrentProject:  (project: Project) => void;
 }
 
@@ -87,6 +91,8 @@ export const useProjectStore = create<Store>((set) => ({
     selectedFile:    null,
     isAgentThinking: false,
     previewUrl:      null,
+    previewNonce:    0,
+    activeTab:       'preview',
     currentProject:  null,
 
 
@@ -139,6 +145,8 @@ export const useProjectStore = create<Store>((set) => ({
     setSelectedFile:    (file)    => set({ selectedFile: file }),
     setIsAgentThinking: (bool)    => set({ isAgentThinking: bool }),
     setPreviewUrl:      (url)     => set({ previewUrl: url }),
+    reloadPreview:      ()        => set((s) => ({ previewNonce: s.previewNonce + 1 })),
+    setActiveTab:       (tab)     => set({ activeTab: tab }),
     setCurrentProject:  (project) => set({ currentProject: project }),
 }));
 
