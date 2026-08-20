@@ -36,13 +36,16 @@ export default function ProjectPage() {
     setIsAgentThinking,
     previewUrl,
     setPreviewUrl,
+    previewNonce,
+    reloadPreview,
+    activeTab,
+    setActiveTab,
     currentProject,
     setCurrentProject,
   } = useProjectStore();
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [input, setInput] = useState("");
   const [fetching, setFetching] = useState(true);
-  const [activeTab, setActiveTab] = useState("preview");
   const [showPushModal, setShowPushModal] = useState(false);
 
   const { connected: githubConnected, loadStatus: loadGithubStatus } =
@@ -121,12 +124,15 @@ export default function ProjectPage() {
         if (eventName === "agent:thinking") {
           setIsAgentThinking(true);
 
-          addMessage({
-            id: `ai=${Date.now()}`,
-            role: "assistant",
-            content: "",
-            projectId: id
-          })
+          const last = useProjectStore.getState().messages.at(-1);
+          if (!(last?.role === "assistant" && last.content === "")) {
+            addMessage({
+              id: `ai-${Date.now()}`,
+              role: "assistant",
+              content: "",
+              projectId: id
+            })
+          }
         }
 
         if (eventName === "agent:token") {
@@ -141,6 +147,10 @@ export default function ProjectPage() {
             })
           );
           setIsAgentThinking(false);
+        }
+
+        if (eventName === "preview:reloaded") {
+          useProjectStore.getState().reloadPreview();
         }
 
         if (eventName === "file:written") {
@@ -270,6 +280,7 @@ export default function ProjectPage() {
         {activeTab === "preview" ? (
           previewUrl ? (
             <iframe
+              key={previewNonce}
               src={previewUrl}
               className="flex-1 w-full border-none bg-white"
               title="Preview"
