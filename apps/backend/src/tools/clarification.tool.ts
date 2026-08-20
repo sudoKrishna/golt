@@ -3,6 +3,26 @@ import OpenAI from "openai";
 
 export const CLARIFY_MARKER = "__CLARIFY__";
 
+
+export const proceedTool: OpenAI.Chat.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "proceed",
+    description: `Call this when the user's request is clear enough to start building.
+Prefer this over ask_clarification whenever reasonable assumptions would produce a good result.`,
+    parameters: {
+      type: "object",
+      required: ["assumptions"],
+      properties: {
+        assumptions: {
+          type: "string",
+          description: "One sentence: what you are assuming about the request.",
+        },
+      },
+    },
+  },
+};
+
 export const clarificationTool: OpenAI.Chat.ChatCompletionTool = {
   type: "function",
   function: {
