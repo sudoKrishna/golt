@@ -22,7 +22,7 @@ export async function attachWs(server : any) {
         ws.on('message'  , async (raw : any) => {
             try {
                 const {type , projectId} = JSON.parse(raw.toString())
-
+ 
                 if(type === "join") {
                  const project = await prisma.project.findUnique({
                         where:  {id : projectId}
@@ -39,7 +39,15 @@ export async function attachWs(server : any) {
             } catch (error) {
                 ws.send(JSON.stringify({error : "invalid message"}))
             }
+        }),
+        ws.on('close' , async(ws : any) => {
+            try {
+                
+            } catch (error) {
+                
+            }
         })
+
     })
 
     
