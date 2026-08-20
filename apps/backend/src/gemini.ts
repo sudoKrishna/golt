@@ -80,8 +80,10 @@ export type ToolCall = {
   args: Record<string, unknown>
 }
 
-export async function askLLM(messages: any[], tools: OpenAI.Chat.ChatCompletionTool[]
-
+export async function askLLM(
+  messages: any[],
+  tools: OpenAI.Chat.ChatCompletionTool[],
+  toolChoice: OpenAI.Chat.ChatCompletionToolChoiceOption = "auto"
 ): Promise<{ toolCalls: ToolCall[]; text: string }> {
   const response = await client.chat.completions.create({
     model: "deepseek-chat",
@@ -89,7 +91,7 @@ export async function askLLM(messages: any[], tools: OpenAI.Chat.ChatCompletionT
     temperature: 0.2,
     max_tokens: 8192,
     tools,
-    tool_choice: "auto",
+    tool_choice: toolChoice,
     messages,
   })
 
