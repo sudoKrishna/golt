@@ -73,7 +73,7 @@ export async function executeTool(toolName : string, args : Record<string, unkno
         await writeFiles(containerId , [{path , content}])
         }
 
-        emitToProject(projectId , "file:written" , {path})
+        emitToProject(projectId , "file:written" , {path, content})
 
        return `OK : wrote ${path}`
     }
