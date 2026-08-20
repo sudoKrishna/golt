@@ -134,10 +134,12 @@ export default function Chat() {
 function MessageCard({ msg }: { msg: any }) {
   const [showDetails, setShowDetails] = useState(false);
 
-  const {setPreviewUrl} = useProjectStore();
+  const { setActiveTab, reloadPreview } = useProjectStore();
+
 
   const handlePreview = () => {
-    setPreviewUrl(msg.content)
+    setActiveTab("preview");
+    reloadPreview();
   }
 
   function generateTopic(text: string) {
