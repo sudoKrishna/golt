@@ -122,6 +122,13 @@ export const useProjectStore = create<Store>((set) => ({
 
         if (last && last.role === 'assistant') {
             messages[messages.length - 1] = { ...last, content };
+        } else {
+            messages.push({
+                id: `ai-${Date.now()}`,
+                role: 'assistant',
+                content,
+                projectId: state.currentProject?.id ?? '',
+            });
         }
 
         return { messages };
