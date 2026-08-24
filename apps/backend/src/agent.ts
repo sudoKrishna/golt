@@ -20,7 +20,11 @@ export type AgentResponse =
 | {type : "answer" , reasoning : string ;toolCalls : ToolCall[] };
 
 
-const MAX_ITERATIONS = 10;
+
+const MAX_ITERATIONS = 25;
+const MAX_TOTAL_ITERATIONS = 40;
+
+const READ_ONLY_TOOLS = new Set(["read_file"]);
 
 function encodeClarification(reasoning: string, questions: ClarificationQuestion[]): string {
   return CLARIFY_MARKER + JSON.stringify({ reasoning, questions });
@@ -84,9 +88,6 @@ export async function runAgent(projectId: string, userMessage: string) {
       where: { projectId }
     })
 
-    // Full conversation so far (includes the user message just created above),
-    // so the model can see prior turns — including any clarifying question it
-    // already asked and how the user answered it.
     const history = await prisma.message.findMany({
       where: { projectId },
       orderBy: { createdAt: "asc" },
@@ -152,14 +153,19 @@ export async function runAgent(projectId: string, userMessage: string) {
     const containerId = sandbox.containerId ?? null;
 
     let iteration = 0;
+    let productiveIterations = 0;
     let finalSummary = "";
     let isDone = false;
     let wroteFiles = false;
 
 
-    while (iteration < MAX_ITERATIONS && !isDone) {
+    while (
+      productiveIterations < MAX_ITERATIONS &&
+      iteration < MAX_TOTAL_ITERATIONS &&
+      !isDone
+    ) {
       iteration++;
-      console.log(`iteration ${iteration}`)
+      console.log(`iteration ${iteration} (productive ${productiveIterations}/${MAX_ITERATIONS})`)
 
       const { toolCalls, text } = await askLLM(messages, TOOL_DEFINITIONS);
 
@@ -173,6 +179,10 @@ export async function runAgent(projectId: string, userMessage: string) {
       }
 
       messages.push(assistantMessage(text, toolCalls))
+
+      if (toolCalls.some((call) => !READ_ONLY_TOOLS.has(call.name))) {
+        productiveIterations++;
+      }
 
       for (const call of toolCalls) {
         console.log(`[AGENT] calling tool: ${call.name}`);
@@ -211,17 +221,26 @@ export async function runAgent(projectId: string, userMessage: string) {
       emitToProject(projectId, "preview:reloaded", {});
     }
 
-    if (!isDone && !finalSummary) {
-      finalSummary = "(Agent reached the max itreation without finishing)";
-      console.error("[Agent] hit max intration")
+    const hitCap = !isDone && !finalSummary;
+
+    if (hitCap) {
+      finalSummary = "(Agent reached the max iteration without finishing — the project may be left in an incomplete state.)";
+      console.error(
+        `[Agent] hit max iterations (productive ${productiveIterations}/${MAX_ITERATIONS}, total ${iteration}/${MAX_TOTAL_ITERATIONS})`
+      )
+      emitToProject(projectId, "agent:incomplete", {
+        reason: "max_iterations",
+        productiveIterations,
+        totalIterations: iteration,
+      });
     }
 
     await prisma.message.create({
       data: { projectId, role: "assistant", content: finalSummary }
     })
 
-    console.log("[agent] complete")
-    emitToProject(projectId, "agent:done", { summary: finalSummary })
+    console.log(hitCap ? "[agent] finished incomplete" : "[agent] complete")
+    emitToProject(projectId, "agent:done", { summary: finalSummary, incomplete: hitCap })
   } catch (error) {
     console.error("[Run agent error]", error)
     emitToProject(projectId, "agent:error", { error: String(error) });
