@@ -1,10 +1,20 @@
-import { Sandbox } from "e2b";
+import { Sandbox, waitForFile } from "e2b";
+import path from "path";
 
 const TEMPLATE = "sandbox-base";
-const SANDBOX_TIMEOUT_MS = 15 * 60 * 1000; 
+const SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
+
+
+export const BINARY_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot'];
+
+export function isBinaryPath(filePath: string) {
+    return BINARY_EXTENSIONS.includes(path.extname(filePath).toLowerCase());
+}
 
 async function getSandbox(sandboxId: string): Promise<Sandbox> {
-    return Sandbox.connect(sandboxId);
+    const sandbox = await Sandbox.connect(sandboxId);
+    await sandbox.setTimeout(SANDBOX_TIMEOUT_MS);
+    return sandbox;
 }
 
 export async function createAndStart(projectId: string) {
@@ -69,7 +79,13 @@ export async function writeFiles(
     const sandbox = await getSandbox(containerId);
 
     for (const file of files) {
-        await sandbox.files.write(`/app/${file.path}`, file.content);
+        const dest = `/app/${file.path}`;
+        if (isBinaryPath(file.path)) {
+            const buf = Buffer.from(file.content, "base64");
+            await sandbox.files.write(dest, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+        } else {
+            await sandbox.files.write(dest, file.content);
+        }
     }
 }
 
