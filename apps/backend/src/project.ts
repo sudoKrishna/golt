@@ -5,6 +5,7 @@ import path from 'path';
 import { requireAuth } from './middlewares/auth.middleware';
 import { ensureSandbox } from './sandbox';
 import { runAgent } from './agent';
+import { isBinaryPath } from './e2b';
 
 const router = Router();
 
@@ -15,8 +16,6 @@ const SKIP_FILES  = ['bun.lock' , 'package-lock.json', 'yarn.lock']
 function getTemplateFiles() {
   const files: { path: string; content: string }[] = [];
 
-  const BINARY_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot'];
-
   function walk(dir: string, base: string) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if(SKIP_FILES.includes(entry.name)) continue;
@@ -26,10 +25,11 @@ function getTemplateFiles() {
       if (entry.isDirectory()) {
         walk(full, rel);
        } else {
-     
-        const ext = path.extname(entry.name).toLowerCase();
-        if (BINARY_EXTENSIONS.includes(ext)) continue;
-        files.push({ path: rel, content: readFileSync(full, 'utf-8') });
+        if (isBinaryPath(entry.name)) {
+          files.push({ path: rel, content: readFileSync(full).toString('base64') });
+        } else {
+          files.push({ path: rel, content: readFileSync(full, 'utf-8') });
+        }
     }
   }
 }
