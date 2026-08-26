@@ -9,10 +9,12 @@ const DEV_COMMAND =
 
 export async function restartDevServer(containerId: string) {
     try {
-        await execInContainer(containerId, "pkill -f vite || true");
+
+        await execInContainer(containerId, "pkill -f 'vi[t]e' || true");
         await runInBackground(containerId, DEV_COMMAND);
     } catch (error) {
         console.error("[sandbox] failed to restart dev server", error);
+        throw error;
     }
 }
 
@@ -22,6 +24,18 @@ async function isAlive(containerId: string | null) {
     try {
         await Sandbox.connect(containerId);
         return true;
+    } catch {
+        return false;
+    }
+}
+
+async function isDevServerRunning(containerId: string) {
+    try {
+        const result = await execInContainer(
+            containerId,
+            "pgrep -f 'vi[t]e' > /dev/null && echo up || echo down"
+        );
+        return result.stdout.trim() === "up";
     } catch {
         return false;
     }
@@ -49,6 +63,10 @@ async function createSandbox(projectId : string) {
 
 
     if (existing?.status === "running" && (await isAlive(existing.containerId))) {
+        if (!(await isDevServerRunning(existing.containerId!))) {
+            console.log("[2b] dev server down, restarting", existing.containerId);
+            await restartDevServer(existing.containerId!);
+        }
         return existing;
     }
 
