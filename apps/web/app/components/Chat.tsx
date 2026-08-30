@@ -57,7 +57,7 @@ export default function Chat() {
 
 
   return (
-    <div className="flex flex-col border-r shrink-0 border-gray-800 w-[360px]">
+    <div className="flex flex-col border-b md:border-r md:border-b-0 shrink-0 border-gray-800 w-full md:w-[360px] h-1/2 md:h-full">
       <div className="flex items-center gap-2 px-4 h-12 border-b border-gray-800 shrink-0">
         <button
           onClick={() => router.push("/dashboard")}
