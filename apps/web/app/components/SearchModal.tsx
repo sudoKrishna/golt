@@ -84,16 +84,16 @@ export default function SearchModal({ open, onClose }: Props) {
   return (
    <div
   onClick={onClose}
-  className="fixed inset-0 z-50 flex justify-center items-start pt-20"
+  className="fixed inset-0 z-50 flex justify-center items-start pt-6 px-3 sm:pt-20 sm:px-4"
 >
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[980px] h-[650px] bg-[#1c1c1c] rounded-3xl border border-neutral-700 overflow-hidden shadow-2xl flex"
+        className="w-full max-w-[980px] h-[85vh] sm:h-[650px] bg-[#1c1c1c] rounded-3xl border border-neutral-700 overflow-hidden shadow-2xl flex flex-col sm:flex-row"
       >
         {/* LEFT */}
 
-        <div className="w-[340px] border-r border-neutral-800 flex flex-col">
+        <div className="w-full sm:w-[340px] max-h-[35vh] sm:max-h-none border-b sm:border-b-0 sm:border-r border-neutral-800 flex flex-col shrink-0">
 
           <div className="border-b border-neutral-800 p-5">
 
@@ -123,7 +123,7 @@ export default function SearchModal({ open, onClose }: Props) {
                 <button
                   key={project.id}
                   onClick={() => setSelected(project)}
-                  className={`w-[327px] ml-2 px-3 py-2 text-left transition ${
+                  className={`w-full sm:w-[327px] ml-0 sm:ml-2 px-3 py-2 text-left transition ${
                     selected?.id === project.id
                       ? "bg-blue-600 rounded-lg  text-white"
                       : "hover:bg-neutral-800 text-neutral-300"
@@ -143,17 +143,17 @@ export default function SearchModal({ open, onClose }: Props) {
 
         {/* RIGHT */}
 
-        <div className="flex-1 p-8 text-white">
+        <div className="flex-1 p-4 sm:p-8 text-white overflow-y-auto">
 
           {selected ? (
             <>
-              <div className="h-56 rounded-xl border border-neutral-700 bg-neutral-900" />
+              <div className="h-40 sm:h-56 rounded-xl border border-neutral-700 bg-neutral-900" />
 
-              <h2 className="mt-6 text-3xl font-semibold">
+              <h2 className="mt-6 text-2xl sm:text-3xl font-semibold">
                 {selected.name}
               </h2>
 
-              <div className="grid grid-cols-2 gap-8 mt-8 text-neutral-400">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-8 text-neutral-400">
 
                 <div>
                   <p>Owner</p>
