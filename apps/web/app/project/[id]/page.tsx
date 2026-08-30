@@ -228,18 +228,18 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="h-screen bg-[#0d0d0d] text-white flex overflow-hidden">
+    <div className="h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row overflow-hidden">
 
       {/* chat*/}
       <Chat />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="h-14 border-b border-neutral-800 flex items-center justify-start px-4 bg-[#0d0d0d]">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="h-auto sm:h-14 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-0 bg-[#0d0d0d]">
           <ProjectTabs
            activeTab={activeTab}
            setActiveTab={setActiveTab}
            />
 
-          <div className="absolute right-4 flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {githubConnected ? (
               <button
                 onClick={() => setShowPushModal(true)}
@@ -291,8 +291,8 @@ export default function ProjectPage() {
             </div>
           )
         ) : (
-          <div className="flex flex-1 overflow-hidden">
-            <div className="w-64 border-r border-neutral-800 bg-[#111111] overflow-y-auto">
+          <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
+            <div className="w-full sm:w-64 max-h-40 sm:max-h-none border-b sm:border-b-0 sm:border-r border-neutral-800 bg-[#111111] overflow-y-auto shrink-0">
               <div className="p-3 text-xs uppercase text-neutral-500">
                 Files
               </div>

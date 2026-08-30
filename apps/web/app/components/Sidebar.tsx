@@ -147,7 +147,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       className={`
         relative flex flex-col h-screen bg-black
         transition-all duration-200 ease-in-out
-        ${isOpen ? "w-70" : "w-14"}
+        ${isOpen ? "w-56 sm:w-70" : "w-14"}
       `}
     >
      
