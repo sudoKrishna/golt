@@ -34,7 +34,7 @@ export default function ProjectTabs({
   };
 
   return (
-    <div className="h-14 border-b border-neutral-800 flex items-center justify-start px-4 bg-[#0d0d0d]">
+    <div className="h-14 border-b border-white/10 flex items-center justify-start px-4 bg-[#0a0a0a]">
 
       <motion.div
         layout

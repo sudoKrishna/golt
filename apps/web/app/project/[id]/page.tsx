@@ -221,19 +221,23 @@ export default function ProjectPage() {
 
   if (fetching) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400 text-sm">
-        Loading...
+      <div className="flex h-screen items-center justify-center gap-3 bg-[#0a0a0a] text-neutral-400 text-sm">
+        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path className="opacity-25" d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" />
+          <path className="opacity-75" strokeLinecap="round" d="M12 2a10 10 0 0 1 10 10" />
+        </svg>
+        Loading project...
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-[#0d0d0d] text-white flex flex-col md:flex-row overflow-hidden">
+    <div className="h-screen bg-[#0a0a0a] text-white flex flex-col md:flex-row overflow-hidden">
 
       {/* chat*/}
       <Chat />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <div className="h-auto sm:h-14 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-0 bg-[#0d0d0d]">
+        <div className="h-auto sm:h-14 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-0 bg-[#0a0a0a]">
           <ProjectTabs
            activeTab={activeTab}
            setActiveTab={setActiveTab}
@@ -243,14 +247,14 @@ export default function ProjectPage() {
             {githubConnected ? (
               <button
                 onClick={() => setShowPushModal(true)}
-                className="text-xs text-neutral-500 hover:text-white"
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/10 hover:text-white transition-colors"
               >
                 Push to GitHub
               </button>
             ) : (
               <Link
                 href="/settings/connectors"
-                className="text-xs text-neutral-500 hover:text-white"
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-400 hover:bg-white/10 hover:text-white transition-colors"
                 title="Connect GitHub to push this project"
               >
                 Connect GitHub to push
@@ -262,7 +266,7 @@ export default function ProjectPage() {
                 href={previewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-neutral-500 hover:text-white"
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-neutral-400 hover:bg-white/10 hover:text-white transition-colors"
               >
                 Open ↗
               </a>
@@ -286,14 +290,18 @@ export default function ProjectPage() {
               title="Preview"
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center text-neutral-500">
-              Starting sandbox...
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-neutral-500">
+              <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path className="opacity-25" d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" />
+                <path className="opacity-75" strokeLinecap="round" d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+              <span className="text-sm">Starting sandbox...</span>
             </div>
           )
         ) : (
           <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
-            <div className="w-full sm:w-64 max-h-40 sm:max-h-none border-b sm:border-b-0 sm:border-r border-neutral-800 bg-[#111111] overflow-y-auto shrink-0">
-              <div className="p-3 text-xs uppercase text-neutral-500">
+            <div className="w-full sm:w-64 max-h-40 sm:max-h-none border-b sm:border-b-0 sm:border-r border-white/10 bg-[#0d0d0d] overflow-y-auto shrink-0">
+              <div className="p-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
                 Files
               </div>
 
@@ -301,9 +309,9 @@ export default function ProjectPage() {
                 <button
                   key={file.path}
                   onClick={() => setSelectedFile(file)}
-                  className={`block w-full text-left px-3 py-2 text-sm ${selectedFile?.path === file.path
-                    ? "bg-neutral-800 text-white"
-                    : "text-neutral-400 hover:bg-neutral-900"
+                  className={`block w-full text-left px-3 py-1.5 text-sm border-l-2 transition-colors truncate ${selectedFile?.path === file.path
+                    ? "bg-white/10 text-white border-blue-500"
+                    : "text-neutral-400 border-transparent hover:bg-white/5 hover:text-neutral-200"
                     }`}
                 >
                   {file.path}
@@ -311,7 +319,7 @@ export default function ProjectPage() {
               ))}
             </div>
 
-            <pre className="flex-1 overflow-auto p-6 text-sm font-mono bg-[#0d0d0d]">
+            <pre className="flex-1 overflow-auto p-6 text-sm font-mono bg-[#0a0a0a] text-neutral-300">
               {selectedFile?.content || "Select a file"}
             </pre>
           </div>
