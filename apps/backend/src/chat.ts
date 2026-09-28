@@ -1,52 +1,104 @@
-import { Router } from "express";
+
+import {
+    Router,
+    type Request,
+    type Response,
+    type NextFunction,
+} from "express";
 import { requireAuth } from "./middlewares/auth.middleware";
 import { prisma } from "@repo/db";
 import { runAgent } from "./agent";
 
-const router = Router();
+class ChatController {
+    public router: Router;
 
-router.post("/:projectId/messages", requireAuth , async (req , res) => {
-    const ownerId = (req as any).ownerId  as string;
-    const projectId = req.params.projectId  as string;
+    constructor() {
+        this.router = Router();
 
-   const project = await prisma.project.findUnique({
-        where : {id : projectId}
-    })
+        this.router.post(
+            "/:projectId/messages",
+            requireAuth,
+            this.sendMessage.bind(this)
+        );
 
-    if(!project || project.ownerId !== ownerId) {
-        return  res.status(400).json({error : "user not found"})
+        this.router.get(
+            "/:projectId/messages",
+            requireAuth,
+            this.getMessages.bind(this)
+        );
     }
 
-    const message = req.body.message;
-    if(!message) {
-        return res.status(400).json({error : "message is required"})
+    private async sendMessage(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
+        try {
+            const ownerId = (req as any).ownerId as string;
+            const projectId = req.params.projectId as string;
+
+            const project = await prisma.project.findUnique({
+                where: { id: projectId },
+            });
+
+            if (!project || project.ownerId !== ownerId) {
+                res.status(404).json({
+                    error: "project not found",
+                });
+                return;
+            }
+
+            const { message } = req.body;
+
+            if (!message || typeof message !== "string") {
+                res.status(400).json({
+                    error: "message is required",
+                });
+                return;
+            }
+
+            runAgent(projectId, message).catch(next);
+
+            res.status(200).json({
+                status: "ok",
+            });
+        } catch (error) {
+            next(error);
+        }
     }
 
-    runAgent(projectId , message)
+    private async getMessages(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ): Promise<void> {
+        try {
+            const ownerId = (req as any).ownerId as string;
+            const projectId = req.params.projectId as string;
 
-    return res.status(200).json({status : "ok"})
-    
-})
+            const project = await prisma.project.findUnique({
+                where: { id: projectId },
+            });
 
-router.get("/:projectId/messages", requireAuth, async(req , res) => {
-    const ownerId   = (req).ownerId as string;
-    const projectId = req.params.projectId  as string;
+            if (!project || project.ownerId !== ownerId) {
+                res.status(404).json({
+                    error: "project not found",
+                });
+                return;
+            }
 
-    const project = await prisma.project.findUnique({
-        where : {id : projectId}
-    })
+            const messages = await prisma.message.findMany({
+                where: { projectId },
+                orderBy: { createdAt: "asc" },
+            });
 
-    if(!project || project.ownerId !== ownerId) {
-        return res.status(400).json({error : "project is not found"})
+            res.status(200).json({ messages });
+        } catch (error) {
+            next(error);
+        }
     }
+}
 
-    const messages = await prisma.message.findMany({
-        where : {projectId},
-        orderBy : {createdAt : "asc"}
-    })
+const chatController = new ChatController();
 
-    return res.status(200).json({messages})
-
-})
-
-export default router;
+export default chatController.router;
