@@ -11,6 +11,14 @@ if(!JWT_SECRET) {
     throw new Error("JWT_SECRET is not configured");
 }
 
+export function verifyToken(token: string): { ownerId: string } | null {
+    try {
+        return jwt.verify(token, JWT_SECRET) as { ownerId: string };
+    } catch {
+        return null;
+    }
+}
+
 class AuthController {
     public router: Router
 
@@ -37,11 +45,7 @@ class AuthController {
     }
 
     public verifyToken(token: string): { ownerId: string } | null {
-        try {
-            return jwt.verify(token, JWT_SECRET) as { ownerId: string };
-        } catch {
-            return null
-        }
+        return verifyToken(token);
     }
 
     private async signup(
