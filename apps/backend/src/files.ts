@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { requireAuth } from "./middlewares/auth.middleware";
 import { prisma } from "@repo/db";
+import { validateBody } from "./middlewares/validate.middleware";
+import { writeFileSchema, deleteFileSchema } from "./validation/schemas";
 
 const router = Router();
 
@@ -29,21 +31,24 @@ router.get("/:projectId/files" , requireAuth , async (req , res, next) => {
     }
 })
 
-router.put("/:projectId/files", requireAuth, async (req , res , next) => {
+router.put("/:projectId/files", requireAuth, validateBody(writeFileSchema), async (req , res , next) => {
   try {
       const ownerId = (req as any).ownerId as string;
       const {projectId} = req.params as {projectId : string};
-      const {path , content} =  req.body as {path : string , content : string};
-      
-      if(!path ||!content) {
-          return res.status(400).json({error :  "path and content both required"})
-      }
-  
-      if(path.includes("..") ||  path.startsWith("/")){
-          return res.status(400).json({
-              error : "invalid path"
+      const {path , content} = req.body as {path : string , content : string};
+
+      // Ownership check — without this any authenticated user could overwrite
+      // files belonging to an arbitrary project id (IDOR).
+      const project = await prisma.project.findUnique({
+          where: {id : projectId}
+      });
+
+      if(!project || project.ownerId !== ownerId) {
+          return res.status(404).json({
+              error : "project not found"
           })
       }
+
       const file = await prisma.projectFile.upsert({
           where : {
               projectId_path: {projectId , path}
@@ -57,7 +62,7 @@ router.put("/:projectId/files", requireAuth, async (req , res , next) => {
   }
 })
 
-router.delete("/:projectId/files" , requireAuth, async (req, res, next) => {
+router.delete("/:projectId/files" , requireAuth, validateBody(deleteFileSchema), async (req, res, next) => {
   try {
       const ownerId = (req as any).ownerId as string;
       const {projectId} = req.params as {projectId : string};

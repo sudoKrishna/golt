@@ -4,6 +4,8 @@ import { requireAuth } from "../middlewares/auth.middleware";
 import { prisma } from "@repo/db";
 import { decrypt, encrypt } from "../crypto";
 import { pushProjectToGithub } from "./github-push";
+import { validateBody } from "../middlewares/validate.middleware";
+import { githubPushSchema } from "../validation/schemas";
 
 interface GithubTokenResponse {
     access_token?: string,
@@ -145,7 +147,7 @@ router.delete("/" , requireAuth , async (req , res , next) => {
         next(error)
     }
 })
-router.post("/push" , requireAuth , async (req , res , next) => {
+router.post("/push" , requireAuth, validateBody(githubPushSchema), async (req , res , next) => {
    try {
     const ownerId = req.ownerId as string;
     const {projectId , repoName} = req.body as {projectId : string, repoName : string}

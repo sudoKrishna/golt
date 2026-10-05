@@ -80,7 +80,7 @@ export default function DashboardPage() {
   const firstName = user?.name?.split(" ")[0];
 
   return (
-    <main className="relative min-h-screen rounded-3xl border border-zinc-800 w-full overflow-hidden bg-black">
+    <main className="relative min-h-screen rounded-3xl border-2 border-zinc-700 w-full overflow-hidden bg-black">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"

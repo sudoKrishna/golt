@@ -3,6 +3,8 @@ import { prisma } from '@repo/db';
 import { readdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { requireAuth } from './middlewares/auth.middleware';
+import { validateBody } from './middlewares/validate.middleware';
+import { createProjectSchema } from './validation/schemas';
 import { ensureSandbox } from './sandbox';
 import { runAgent } from './agent';
 import { isBinaryPath } from './e2b';
@@ -72,7 +74,7 @@ router.post("/:id/start" , requireAuth ,async (req , res, next) => {
 
 })
 
-router.post("/" ,requireAuth , async (req , res, next) => {
+router.post("/" ,requireAuth , validateBody(createProjectSchema), async (req , res, next) => {
  try {
    const ownerId = (req as any).ownerId  as string;
    const {prompt } = req.body;
@@ -100,7 +102,11 @@ router.post("/" ,requireAuth , async (req , res, next) => {
 
    await ensureSandbox(project.id)
 
-   runAgent(project.id , prompt)
+   runAgent(project.id, prompt).catch((error) => {
+     // runAgent handles its own errors, but never let a rejection escape as an
+     // unhandled promise rejection.
+     console.error("[project] agent run failed", error);
+   })
 
    const updateProject = await prisma.project.findUnique({
     where : {id : project.id}

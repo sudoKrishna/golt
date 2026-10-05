@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "@repo/db"
 import { requireAuth } from "./middlewares/auth.middleware";
+import { validateBody } from "./middlewares/validate.middleware";
+import { signupSchema, loginSchema } from "./validation/schemas";
 
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -25,8 +27,8 @@ class AuthController {
     constructor() {
         this.router = Router();
 
-        this.router.post("/signup", this.signup.bind(this));
-        this.router.post("/login", this.login.bind(this));
+        this.router.post("/signup", validateBody(signupSchema), this.signup.bind(this));
+        this.router.post("/login", validateBody(loginSchema), this.login.bind(this));
         this.router.get("/me", requireAuth, this.me.bind(this));
     }
 

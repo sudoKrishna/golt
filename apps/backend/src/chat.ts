@@ -6,6 +6,8 @@ import {
     type NextFunction,
 } from "express";
 import { requireAuth } from "./middlewares/auth.middleware";
+import { validateBody } from "./middlewares/validate.middleware";
+import { sendMessageSchema } from "./validation/schemas";
 import { prisma } from "@repo/db";
 import { runAgent } from "./agent";
 
@@ -18,6 +20,7 @@ class ChatController {
         this.router.post(
             "/:projectId/messages",
             requireAuth,
+            validateBody(sendMessageSchema),
             this.sendMessage.bind(this)
         );
 
@@ -57,7 +60,11 @@ class ChatController {
                 return;
             }
 
-            runAgent(projectId, message).catch(next);
+            runAgent(projectId, message).catch((error) => {
+                // The response has already been sent, so we must not call
+                // next() here (it would try to send a second response).
+                console.error("[chat] agent run failed", error);
+            });
 
             res.status(200).json({
                 status: "ok",

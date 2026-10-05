@@ -26,6 +26,15 @@ const MAX_TOTAL_ITERATIONS = 40;
 
 const READ_ONLY_TOOLS = new Set(["read_file"]);
 
+// Projects with an agent loop currently in flight. Prevents two concurrent
+// messages from mutating the same project's files at once. In-memory only;
+// swap for a Redis lock when running more than one backend instance.
+const runningProjects = new Set<string>();
+
+export function isAgentRunning(projectId: string): boolean {
+  return runningProjects.has(projectId);
+}
+
 function encodeClarification(reasoning: string, questions: ClarificationQuestion[]): string {
   return CLARIFY_MARKER + JSON.stringify({ reasoning, questions });
 }
@@ -77,6 +86,14 @@ async function execWithRetry(
 }
 
 export async function runAgent(projectId: string, userMessage: string) {
+  if (runningProjects.has(projectId)) {
+    emitToProject(projectId, "agent:error", {
+      error: "An agent run is already in progress for this project. Please wait for it to finish.",
+    });
+    return;
+  }
+  runningProjects.add(projectId);
+
   try {
     await prisma.message.create({
       data: { projectId, role: "user", content: userMessage }
@@ -244,5 +261,7 @@ export async function runAgent(projectId: string, userMessage: string) {
   } catch (error) {
     console.error("[Run agent error]", error)
     emitToProject(projectId, "agent:error", { error: String(error) });
+  } finally {
+    runningProjects.delete(projectId);
   }
 }

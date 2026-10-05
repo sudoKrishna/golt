@@ -1,5 +1,6 @@
 import { prisma } from "@repo/db";
 import { getGithubToken } from "./github";
+import { HttpError, notFound } from "../errors";
 
 interface  GithubUser {
     login : string
@@ -11,8 +12,19 @@ interface GithubContent {
 
 
 export async function pushProjectToGithub(ownerId : string , projectId : string, repoName : string) {
+    // Ownership check — otherwise any authenticated user could push an
+    // arbitrary project to their own GitHub account by guessing the id (IDOR).
+    const project = await prisma.project.findUnique({
+        where : { id : projectId },
+        select : { ownerId : true },
+    });
+
+    if(!project || project.ownerId !== ownerId) {
+        throw notFound("project not found");
+    }
+
     const token = await getGithubToken(ownerId);
-    if(!token) throw new Error("github not connected")
+    if(!token) throw new HttpError(400, "github not connected", "GITHUB_NOT_CONNECTED")
 
         const headers = {
             Authorization : `Bearer ${token}`,
