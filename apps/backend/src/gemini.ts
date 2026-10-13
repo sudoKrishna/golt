@@ -85,15 +85,18 @@ export async function askLLM(
   tools: OpenAI.Chat.ChatCompletionTool[],
   toolChoice: OpenAI.Chat.ChatCompletionToolChoiceOption = "auto"
 ): Promise<{ toolCalls: ToolCall[]; text: string }> {
-  const response = await client.chat.completions.create({
-    model: "deepseek-chat",
-    stream: false,
-    temperature: 0.2,
-    max_tokens: 8192,
-    tools,
-    tool_choice: toolChoice,
-    messages,
-  })
+  const response = await client.chat.completions.create(
+    {
+      model: "deepseek-chat",
+      stream: false,
+      temperature: 0.2,
+      max_tokens: 8192,
+      tools,
+      tool_choice: toolChoice,
+      messages,
+    },
+    { timeout: 90_000 }
+  )
 
   const message = response.choices[0]?.message;
   if (!message) throw new Error("DeepSeek return no response");

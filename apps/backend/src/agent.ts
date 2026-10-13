@@ -77,9 +77,10 @@ async function execWithRetry(
   containerId: string,
   cmd: string,
   retries = 2,
-  delayMs = 3000
+  delayMs = 3000,
+  timeoutMs = 5 * 60_000
 ) {
-  let result = await execInContainer(containerId, cmd);
+  let result = await execInContainer(containerId, cmd, timeoutMs);
   let attempt = 0;
 
   while (result.exitCode !== 0 && attempt < retries) {
@@ -88,7 +89,7 @@ async function execWithRetry(
       `[retry] "${cmd}" failed (exit ${result.exitCode}), retrying (${attempt}/${retries})...`
     );
     await new Promise((resolve) => setTimeout(resolve, delayMs));
-    result = await execInContainer(containerId, cmd);
+    result = await execInContainer(containerId, cmd, timeoutMs);
   }
 
   return result;
@@ -306,6 +307,7 @@ export async function runAgent(projectId: string, userMessage: string) {
     if (wroteFiles && containerId) {
       if (wrotePackageJson) {
         console.log("Installing dependencies...");
+        emitToProject(projectId, "agent:installing", {});
         const install = await execWithRetry(containerId, "cd /app && bun install");
         console.log("Install Exit Code:", install.exitCode);
         console.log("Install stdout:\n", install.stdout);

@@ -59,11 +59,12 @@ export type ExecResult = {
 
 export async function execInContainer(
     containerId: string,
-    command: string
+    command: string,
+    timeoutMs: number = 120_000
 ): Promise<ExecResult> {
     const sandbox = await getSandbox(containerId);
 
-    const result = await sandbox.commands.run(command);
+    const result = await sandbox.commands.run(command, { timeoutMs });
 
     return {
         stdout: result.stdout.trim(),

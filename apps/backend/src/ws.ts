@@ -7,6 +7,10 @@ let wss : WebSocketServer;
 export async function attachWs(server : any) {
     wss =  new WebSocketServer({server})
 
+    wss.on("error", (error) => {
+        console.error("[ws] server error", error);
+    });
+
     wss.on("connection" , async (ws : any , req) => {
         const url = new URL(req.url!, `http://localhost`);
         const token =  url.searchParams.get("token");
@@ -22,7 +26,7 @@ export async function attachWs(server : any) {
         ws.on('message'  , async (raw : any) => {
             try {
                 const {type , projectId} = JSON.parse(raw.toString())
- 
+
                 if(type === "join") {
                  const project = await prisma.project.findUnique({
                         where:  {id : projectId}
@@ -34,20 +38,18 @@ export async function attachWs(server : any) {
                 }
                 ws.projectId = projectId;
                 }
-                
+
 
             } catch (error) {
                 ws.send(JSON.stringify({error : "invalid message"}))
             }
-        }),
-        ws.on('close' , async(ws : any) => {
-            try {
-                
-            } catch (error) {
-                
-            }
-        })
+        });
 
+        ws.on('error', (error: any) => {
+            console.error("[ws] socket error", error);
+        });
+
+        ws.on('close', () => {});
     })
 
     

@@ -1,6 +1,7 @@
 import { prisma } from "@repo/db";
 import { createAndStart, execInContainer, runInBackground, stopContainer, writeFiles } from "./e2b";
 import { Sandbox } from "e2b";
+import { emitToProject } from "./ws";
 
 const inFlight = new Map<string, Promise<Awaited<ReturnType<typeof createSandbox>>>>();
 
@@ -103,7 +104,8 @@ async function createSandbox(projectId : string) {
         await writeFiles(containerId , files)
         console.log("[5] files written");
 
-        await execInContainer(containerId, "cd /app && bun install");
+        emitToProject(projectId, "agent:installing", {});
+        await execInContainer(containerId, "cd /app && bun install", 5 * 60_000);
 
         await runInBackground(containerId, DEV_COMMAND);
         console.log("[6] Vite started");
