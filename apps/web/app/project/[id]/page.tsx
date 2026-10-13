@@ -172,6 +172,17 @@ export default function ProjectPage() {
           if (data.error) console.error("Agent error:", data.error);
         }
 
+        if (eventName === "agent:error") {
+          setIsAgentThinking(false);
+          useProjectStore.getState().setLastAssistantContent(
+            `Something went wrong: ${data.error ?? "unknown error"}`
+          );
+        }
+
+        if (eventName === "agent:incomplete") {
+          setIsAgentThinking(false);
+        }
+
         if (eventName === "agent:cancelled" || (eventName === "agent:done" && data.cancelled)) {
           setIsAgentThinking(false)
           if(data.summary) {
