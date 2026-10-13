@@ -29,10 +29,17 @@ const READ_ONLY_TOOLS = new Set(["read_file"]);
 // Projects with an agent loop currently in flight. Prevents two concurrent
 // messages from mutating the same project's files at once. In-memory only;
 // swap for a Redis lock when running more than one backend instance.
-const runningProjects = new Set<string>();
+const runningControllers = new Map<string, AbortController>();
 
 export function isAgentRunning(projectId: string): boolean {
-  return runningProjects.has(projectId);
+  return runningControllers.has(projectId);
+}
+
+export function cancelAgent(projectId : string) : boolean {
+  const controller = runningControllers.get(projectId);
+  if(!controller) return false;
+  controller.abort();
+  return true;
 }
 
 function encodeClarification(reasoning: string, questions: ClarificationQuestion[]): string {
@@ -86,13 +93,16 @@ async function execWithRetry(
 }
 
 export async function runAgent(projectId: string, userMessage: string) {
-  if (runningProjects.has(projectId)) {
+  if (runningControllers.has(projectId)) {
     emitToProject(projectId, "agent:error", {
       error: "An agent run is already in progress for this project. Please wait for it to finish.",
     });
     return;
   }
-  runningProjects.add(projectId);
+
+  const controller = new AbortController();
+  const {signal} = controller;
+  runningControllers.set(projectId, controller);
 
   try {
     await prisma.message.create({
@@ -181,6 +191,11 @@ export async function runAgent(projectId: string, userMessage: string) {
       iteration < MAX_TOTAL_ITERATIONS &&
       !isDone
     ) {
+      if(signal.aborted) {
+        finalSummary = "(cancelled by user)";
+        emitToProject(projectId, "agent:cancelled", {});
+        break;
+      }
       iteration++;
       console.log(`iteration ${iteration} (productive ${productiveIterations}/${MAX_ITERATIONS})`)
 
@@ -225,6 +240,16 @@ export async function runAgent(projectId: string, userMessage: string) {
       }
     }
 
+    if (signal.aborted) {
+      await prisma.message.create({
+        data : {projectId, role : "assistant", content : "(Cancelled by user)"},
+      });
+      emitToProject(projectId, "agent:done", {
+        summary : "(cancelled by user)",
+        cancelled : true,
+      });
+    } 
+
     if (wroteFiles && containerId) {
       console.log("Installing dependencies ...")
 
@@ -259,9 +284,19 @@ export async function runAgent(projectId: string, userMessage: string) {
     console.log(hitCap ? "[agent] finished incomplete" : "[agent] complete")
     emitToProject(projectId, "agent:done", { summary: finalSummary, incomplete: hitCap })
   } catch (error) {
+    if(signal.aborted) {
+      emitToProject(projectId, "agent:cancelled", {});
+      emitToProject(projectId, "agent:done", {
+        summary : "(Cancelled by user)",
+        cancelled : true,
+      });
+    } else {
+      console.error("Run agnet error", error);
+      emitToProject(projectId , "agent:error" , {error : String(error)})
+    }
     console.error("[Run agent error]", error)
     emitToProject(projectId, "agent:error", { error: String(error) });
   } finally {
-    runningProjects.delete(projectId);
+    runningControllers.delete(projectId);
   }
 }

@@ -171,6 +171,13 @@ export default function ProjectPage() {
           }
           if (data.error) console.error("Agent error:", data.error);
         }
+
+        if (eventName === "agent:cancelled" || (eventName === "agent:done" && data.cancelled)) {
+          setIsAgentThinking(false)
+          if(data.summary) {
+            useProjectStore.getState().setLastAssistantContent(data.summary)
+          }
+        }
       } catch (error) {
         console.error("ws parse error", error)
       }

@@ -1,4 +1,3 @@
-
 import {
     Router,
     type Request,
@@ -9,7 +8,7 @@ import { requireAuth } from "./middlewares/auth.middleware";
 import { validateBody } from "./middlewares/validate.middleware";
 import { sendMessageSchema } from "./validation/schemas";
 import { prisma } from "@repo/db";
-import { runAgent } from "./agent";
+import { runAgent, cancelAgent } from "./agent";
 
 class ChatController {
     public router: Router;
@@ -29,6 +28,12 @@ class ChatController {
             requireAuth,
             this.getMessages.bind(this)
         );
+
+        this.router.post(
+            "/:projectId/messages/cancel",
+            requireAuth,
+            this.cancelMessage.bind(this)
+        )
     }
 
     private async sendMessage(
@@ -102,6 +107,35 @@ class ChatController {
             res.status(200).json({ messages });
         } catch (error) {
             next(error);
+        }
+    }
+
+    private async cancelMessage(
+        req : Request,
+        res :Response,
+        next : NextFunction,
+    ) : Promise<void> {
+        try {
+            const ownerId = (req as any).ownerId as string;
+            const projectId = req.params.projectId as string;
+
+            const project = await prisma.project.findUnique({
+                where : {id :projectId}
+            })
+
+            if(!project || project.ownerId !== ownerId) {
+                res.status(404).json({error : "project not found"})
+                return;
+            }
+
+            const cancelled = cancelAgent(projectId);
+            res.status(200).json({status : "ok", cancelled})
+
+
+
+
+        } catch (error) {
+            next(error)
         }
     }
 }

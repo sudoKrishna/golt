@@ -140,3 +140,11 @@ export async function startSandbox(projectId: string) {
     });
 }
 
+export async function cancelMessage(projectId : string) {
+    return apiFetch(`/projects/${projectId}/cancel` , {
+        method : "POST"
+    });
+}
+
+
+

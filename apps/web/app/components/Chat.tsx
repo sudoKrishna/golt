@@ -3,8 +3,8 @@ import { useProjectStore } from "@/store/project.store";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowUp, ChevronDown, Paperclip, Sparkles } from "lucide-react";
-import { getMessages, sendMessages } from "../lib/api";
+import { ArrowLeft, ArrowUp, ChevronDown, Paperclip, Sparkles , Square } from "lucide-react";
+import { cancelMessage, getMessages, sendMessages } from "../lib/api";
 
 export const CLARIFY_MARKER = "__CLARIFY__";
 
@@ -60,6 +60,17 @@ export default function Chat() {
       await sendMessages(id, content)
     } catch (error) {
       console.log("Falied to send message", error)
+      setIsAgentThinking(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!isAgentThinking) return;
+    try {
+      await cancelMessage(id);
+    } catch (err) {
+      console.error("Failed to cancle", err);
+    } finally {
       setIsAgentThinking(false);
     }
   }
@@ -137,14 +148,26 @@ export default function Chat() {
             >
               <Paperclip size={15} />
             </button>
-            <button
-              onClick={handleSend}
-              disabled={isAgentThinking || !input.trim()}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-black hover:bg-neutral-200 disabled:opacity-30 disabled:hover:bg-white transition-colors"
-              aria-label="Send message"
-            >
-              <ArrowUp size={16} strokeWidth={2.5} />
-            </button>
+
+            {isAgentThinking ? (
+              <button
+                onClick={handleCancel}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500/90 text-white hover:bg-red-500 transition-colors"
+                aria-label="Cancel conversation"
+                title="Stop generating"
+              >
+                <Square size={14} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-black hover:bg-neutral-200 disabled:opacity-30 disabled:hover:bg-white transition-colors"
+                aria-label="Send message"
+              >
+                <ArrowUp size={16} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -293,11 +316,10 @@ function ClarificationCard({ raw }: { raw: string }) {
                   key={opt}
                   disabled={submitted}
                   onClick={() => setAnswers((a) => ({ ...a, [q.id]: opt }))}
-                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                    answers[q.id] === opt
+                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${answers[q.id] === opt
                       ? "bg-white text-black border-white font-medium"
                       : "bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10"
-                  } disabled:cursor-default`}
+                    } disabled:cursor-default`}
                 >
                   {opt}
                 </button>
