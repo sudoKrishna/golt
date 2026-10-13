@@ -106,6 +106,7 @@ async function refreshPreview(projectId: string, containerId: string) {
 }
 
 export async function runAgent(projectId: string, userMessage: string) {
+  console.log(`[agent] runAgent called projectId=${projectId} messageLen=${userMessage.length}`);
   if (runningControllers.has(projectId)) {
     emitToProject(projectId, "agent:error", {
       error:
@@ -159,6 +160,7 @@ export async function runAgent(projectId: string, userMessage: string) {
     ];
 
     if (!alreadyAskedClarification) {
+      console.log(`[agent] projectId=${projectId} calling clarification gate`);
       const gate = await askLLM(messages, [clarificationTool, proceedTool], "required");
       const gateCall = gate.toolCalls[0];
 
@@ -194,8 +196,11 @@ export async function runAgent(projectId: string, userMessage: string) {
       }
     }
 
+    console.log(`[agent] projectId=${projectId} ensureSandbox starting`);
+    const sandboxT0 = Date.now();
     const sandbox = await ensureSandbox(projectId);
     const containerId = sandbox.containerId ?? null;
+    console.log(`[agent] projectId=${projectId} ensureSandbox done in ${Date.now() - sandboxT0}ms containerId=${containerId}`);
 
     let iteration = 0;
     let productiveIterations = 0;
@@ -220,7 +225,9 @@ export async function runAgent(projectId: string, userMessage: string) {
         `iteration ${iteration} (productive ${productiveIterations}/${MAX_ITERATIONS})`
       );
 
+      const iterT0 = Date.now();
       const { toolCalls, text } = await askLLM(messages, TOOL_DEFINITIONS);
+      console.log(`[agent] projectId=${projectId} iteration ${iteration} askLLM in ${Date.now() - iterT0}ms toolCalls=${toolCalls.length}`);
 
       if (text) {
         emitToProject(projectId, "agent:token", { text });
@@ -350,7 +357,7 @@ export async function runAgent(projectId: string, userMessage: string) {
         cancelled: true,
       });
     } else {
-      console.error("[Run agent error]", error);
+      console.error(`[agent] runAgent error projectId=${projectId}`, error);
       emitToProject(projectId, "agent:error", { error: String(error) });
     }
   } finally {

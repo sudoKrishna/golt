@@ -65,12 +65,17 @@ class ChatController {
                 return;
             }
 
-            runAgent(projectId, message).catch((error) => {
-                // The response has already been sent, so we must not call
-                // next() here (it would try to send a second response).
-                console.error("[chat] agent run failed", error);
-            });
+            console.log(`[chat] sendMessage projectId=${projectId} len=${message.length}`);
 
+            runAgent(projectId, message)
+                .then(() => console.log(`[chat] runAgent resolved projectId=${projectId}`))
+                .catch((error) => {
+                    // The response has already been sent, so we must not call
+                    // next() here (it would try to send a second response).
+                    console.error(`[chat] agent run failed projectId=${projectId}`, error);
+                });
+
+            console.log(`[chat] responding 200 projectId=${projectId}`);
             res.status(200).json({
                 status: "ok",
             });

@@ -16,16 +16,19 @@ export async function attachWs(server : any) {
         const token =  url.searchParams.get("token");
 
         const payload = token ? await verifyToken(token) : null;
-        
+
         if(!payload) {
+            console.log("[ws] connection rejected: unauthorized");
             ws.close(1008, "unauthorized" )
             return;
         }
         ws.userId = payload.ownerId;
+        console.log(`[ws] connected userId=${ws.userId}`);
 
         ws.on('message'  , async (raw : any) => {
             try {
                 const {type , projectId} = JSON.parse(raw.toString())
+                console.log(`[ws] message userId=${ws.userId} type=${type} projectId=${projectId}`);
 
                 if(type === "join") {
                  const project = await prisma.project.findUnique({
@@ -33,23 +36,28 @@ export async function attachWs(server : any) {
                     })
 
                 if(!project || project.ownerId !== ws.userId) {
+                   console.log(`[ws] join rejected: userId=${ws.userId} projectId=${projectId}`);
                    ws.send(JSON.stringify({type : 'error' , message:"Unauthorized"}))
                    return;
                 }
                 ws.projectId = projectId;
+                console.log(`[ws] joined projectId=${projectId} userId=${ws.userId}`);
                 }
 
 
             } catch (error) {
+                console.error("[ws] failed to parse message", error);
                 ws.send(JSON.stringify({error : "invalid message"}))
             }
         });
 
         ws.on('error', (error: any) => {
-            console.error("[ws] socket error", error);
+            console.error(`[ws] socket error userId=${ws.userId}`, error);
         });
 
-        ws.on('close', () => {});
+        ws.on('close', (code: number, reason: Buffer) => {
+            console.log(`[ws] closed userId=${ws.userId} projectId=${ws.projectId} code=${code} reason=${reason?.toString()}`);
+        });
     })
 
     
@@ -57,12 +65,14 @@ export async function attachWs(server : any) {
 
 
 export function emitToProject(projectId : string , event : string , data : any) {
-    
+    let matched = 0;
     wss.clients.forEach((client: any) => {
         if(client.projectId === projectId && client.readyState === WebSocket.OPEN) {
+            matched++;
             client.send(JSON.stringify({event, data}))
         }
     })
+    console.log(`[ws] emit ${event} projectId=${projectId} matchedClients=${matched}/${wss.clients.size}`);
 }
 
 

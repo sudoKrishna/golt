@@ -54,7 +54,20 @@ export const TOOL_DEFINITIONS : OpenAI.Chat.ChatCompletionTool[] = [
 ]
 
 export async function executeTool(toolName : string, args : Record<string, unknown>, projectId : string, containerId : string | null) : Promise<string> {
-    
+    console.log(`[tools] executing ${toolName} projectId=${projectId} containerId=${containerId}`);
+    const t0 = Date.now();
+    try {
+        const result = await executeToolInner(toolName, args, projectId, containerId);
+        console.log(`[tools] ${toolName} done in ${Date.now() - t0}ms`);
+        return result;
+    } catch (error) {
+        console.error(`[tools] ${toolName} FAILED after ${Date.now() - t0}ms`, error);
+        throw error;
+    }
+}
+
+async function executeToolInner(toolName : string, args : Record<string, unknown>, projectId : string, containerId : string | null) : Promise<string> {
+
     if(toolName === "write_file") {
         const {path , content} = args as {path : string , content : string}
 
