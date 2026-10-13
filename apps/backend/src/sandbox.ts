@@ -7,6 +7,19 @@ const inFlight = new Map<string, Promise<Awaited<ReturnType<typeof createSandbox
 const DEV_COMMAND =
     "cd /app && bun run dev -- --host 0.0.0.0 --port 5173 > /tmp/vite.log 2>&1";
 
+async function waitFowVite(containerId : string, maxAttempts = 30) {
+    for(let i = 0; i < maxAttempts; i++) {
+        const result = await execInContainer(
+            containerId,
+            "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5173/ || echo down"
+        );
+        const code = result.stdout.trim();
+        if(code === "200" || code === "304") return true;
+        await new Promise((r) =>  setTimeout(r, 500));
+    }
+    return false;
+}
+
 export async function restartDevServer(containerId: string) {
     try {
 

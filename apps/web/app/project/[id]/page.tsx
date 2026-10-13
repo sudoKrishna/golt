@@ -178,6 +178,13 @@ export default function ProjectPage() {
             useProjectStore.getState().setLastAssistantContent(data.summary)
           }
         }
+
+        if(eventName === "preview:reloaded") {
+          if(data.previewUrl) {
+            useProjectStore.getState().setPreviewUrl(data.previewUrl);
+          }
+          useProjectStore.getState().reloadPreview();
+        }
       } catch (error) {
         console.error("ws parse error", error)
       }
