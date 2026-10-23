@@ -58,7 +58,7 @@ export async function  apiFetch(path : string , options : RequestInit = {}) {
     const data = await res.json().catch(() => ({}));
 
     if(!res.ok) {
-        throw apiError(401, "Unauthorized");
+        throw apiError(res.status, data?.error ?? data?.message ?? res.statusText ?? "Request failed");
     }
 
     return data;
