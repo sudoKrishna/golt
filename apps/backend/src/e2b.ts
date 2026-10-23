@@ -1,7 +1,7 @@
 import { Sandbox, waitForFile } from "e2b";
 import path from "path";
 
-const TEMPLATE = "sandbox-base";
+const TEMPLATE = "base";
 const SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
 
 
