@@ -39,6 +39,52 @@ export async function createAndStart(projectId: string) {
     }
 }
 
+export async function ensureBunInstalled(containerId: string): Promise<void> {
+    console.log(`[e2b] ensuring bun is installed`);
+    const t0 = Date.now();
+    const sandbox = await getSandbox(containerId);
+
+    const result = await sandbox.commands.run(
+        `command -v bun || (curl -fsSL https://bun.sh/install | bash && ln -sf ~/.bun/bin/bun /usr/local/bin/bun && ln -sf ~/.bun/bin/bunx /usr/local/bin/bunx)`,
+        { timeoutMs: 60_000 }
+    );
+
+    if (result.exitCode !== 0) {
+        console.error(`[e2b] bun install FAILED: ${result.stderr}`);
+        throw new Error(`[e2b] failed to install bun: ${result.stderr}`);
+    }
+
+    console.log(`[e2b] bun ready in ${Date.now() - t0}ms`);
+}
+
+export async function ensureNodeUpgraded(containerId: string): Promise<void> {
+    console.log(`[e2b] ensuring node >=20.12 is installed`);
+    const t0 = Date.now();
+    const sandbox = await getSandbox(containerId);
+
+    const script = `
+        NODE_OK=$(node -e "const [maj,min]=process.versions.node.split('.').map(Number); console.log(maj>20 || (maj===20 && min>=12) ? 'yes' : 'no')" 2>/dev/null || echo no)
+        if [ "$NODE_OK" != "yes" ]; then
+          curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.gz -o /tmp/node.tar.gz
+          mkdir -p "$HOME/.node22"
+          tar -xzf /tmp/node.tar.gz -C "$HOME/.node22" --strip-components=1
+          ln -sf "$HOME/.node22/bin/node" /usr/local/bin/node
+          ln -sf "$HOME/.node22/bin/npm" /usr/local/bin/npm
+          ln -sf "$HOME/.node22/bin/npx" /usr/local/bin/npx
+        fi
+        node -v
+    `;
+
+    const result = await sandbox.commands.run(script, { timeoutMs: 60_000 });
+
+    if (result.exitCode !== 0) {
+        console.error(`[e2b] node upgrade FAILED: ${result.stderr}`);
+        throw new Error(`[e2b] failed to upgrade node: ${result.stderr}`);
+    }
+
+    console.log(`[e2b] node ready (${result.stdout.trim()}) in ${Date.now() - t0}ms`);
+}
+
 export async function stopContainer(containerId: string) {
     try {
         const sandbox = await getSandbox(containerId);
