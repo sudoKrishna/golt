@@ -1,5 +1,5 @@
 import { prisma } from "@repo/db";
-import { createAndStart, execInContainer, runInBackground, stopContainer, writeFiles } from "./e2b";
+import { createAndStart, ensureBunInstalled, ensureNodeUpgraded, execInContainer, runInBackground, stopContainer, writeFiles } from "./e2b";
 import { Sandbox } from "e2b";
 import { emitToProject } from "./ws";
 
@@ -23,7 +23,7 @@ async function waitFowVite(containerId : string, maxAttempts = 30) {
 
 export async function restartDevServer(containerId: string) {
     try {
-
+        await ensureNodeUpgraded(containerId);
         await execInContainer(containerId, "pkill -f 'vi[t]e' || true");
         await runInBackground(containerId, DEV_COMMAND);
     } catch (error) {
@@ -95,6 +95,11 @@ async function createSandbox(projectId : string) {
         const containerId = await createAndStart(projectId);
         console.log("[3] containerId", containerId);
 
+        await ensureBunInstalled(containerId);
+        console.log("[3b] bun ready");
+
+        await ensureNodeUpgraded(containerId);
+        console.log("[3c] node ready");
 
         const files =  await prisma.projectFile.findMany({
             where : {projectId}
@@ -109,6 +114,12 @@ async function createSandbox(projectId : string) {
 
         await runInBackground(containerId, DEV_COMMAND);
         console.log("[6] Vite started");
+
+        const viteUp = await waitFowVite(containerId);
+        if (!viteUp) {
+            const log = await execInContainer(containerId, "cat /tmp/vite.log || echo 'no log file'");
+            console.error("[sandbox] Vite did not come up in time. /tmp/vite.log contents:\n", log.stdout, log.stderr);
+        }
 
         const sandbox = await Sandbox.connect(containerId);
         const previewUrl = `https://${sandbox.getHost(5173)}`;
