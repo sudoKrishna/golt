@@ -1,7 +1,7 @@
 import { prisma } from "@repo/db";
 import { emitToProject } from "./ws";
 import { ensureSandbox, restartDevServer } from "./sandbox";
-import { askLLM, assistantMessage, toolResultMessage, type ToolCall } from "./gemini";
+import { askLLM, assistantMessage, toolResultMessage, type ToolCall } from "./openai";
 import { TOOL_DEFINITIONS, executeTool } from "./tools";
 import { execInContainer } from "./e2b";
 import { SYSTEM_PROMPT } from "./systemPrompt";
