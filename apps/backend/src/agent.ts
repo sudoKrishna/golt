@@ -7,7 +7,12 @@ import { execInContainer } from "./e2b";
 import { SYSTEM_PROMPT } from "./systemPrompt";
 import { clarificationTool, proceedTool, CLARIFY_MARKER } from "./tools/clarification.tool";
 import { Sandbox } from "e2b";
+import { acquireLock } from "./redis/lock";
+import { redis } from "./redis/redis";
 
+const  AGENT_LOCK_PREFIX = "lock:agent";
+const AGENT_TTL_MS = 20 * 60 * 1000;
+ 
 export type ClarificationQuestion = {
   id: string;
   question: string;
@@ -24,14 +29,14 @@ const MAX_TOTAL_ITERATIONS = 40;
 
 const READ_ONLY_TOOLS = new Set(["read_file"]);
 
-const runningControllers = new Map<string, AbortController>();
+const localControllers = new Map<string, AbortController>();
 
 export function isAgentRunning(projectId: string): boolean {
-  return runningControllers.has(projectId);
+  return localControllers.has(projectId);
 }
 
 export function cancelAgent(projectId: string): boolean {
-  const controller = runningControllers.get(projectId);
+  const controller = localControllers.get(projectId);
   if (!controller) return false;
   controller.abort();
   return true;
@@ -107,7 +112,11 @@ async function refreshPreview(projectId: string, containerId: string) {
 
 export async function runAgent(projectId: string, userMessage: string) {
   console.log(`[agent] runAgent called projectId=${projectId} messageLen=${userMessage.length}`);
-  if (runningControllers.has(projectId)) {
+
+  const localKey = `${AGENT_LOCK_PREFIX}${projectId}`;
+
+  const release = await acquireLock(localKey, AGENT_TTL_MS);
+  if (!release) {
     emitToProject(projectId, "agent:error", {
       error:
         "An agent run is already in progress for this project. Please wait for it to finish.",
@@ -117,7 +126,7 @@ export async function runAgent(projectId: string, userMessage: string) {
 
   const controller = new AbortController();
   const { signal } = controller;
-  runningControllers.set(projectId, controller);
+  localControllers.set(projectId, controller);
 
   try {
     await prisma.message.create({
@@ -361,6 +370,6 @@ export async function runAgent(projectId: string, userMessage: string) {
       emitToProject(projectId, "agent:error", { error: String(error) });
     }
   } finally {
-    runningControllers.delete(projectId);
+    localControllers.delete(projectId);
   }
 }
