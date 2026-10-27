@@ -14,7 +14,7 @@ export async function acquireLock(key : string, ttlMs = DEFAULT_TTL_MS
     }
 
     const release  = async () => {
-        const script = `if redis.call("get" , KEY[1]) === ARG[1] then return 
+        const script = `if redis.call("get" , KEYS[1]) == ARGV[1] then return 
         redis.call("del", KEY[1])
         else
             return 0
