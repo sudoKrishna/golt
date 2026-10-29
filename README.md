@@ -30,11 +30,11 @@ golt/
 
 Next.js 16 / React 19 / Tailwind 4 frontend.
 
-- `app/components/Chat.tsx` — the chat interface that drives the agent
+- `app/components/Chat.tsx` —> the chat interface that drives the agent
 - `app/components/Sidebar.tsx`, `MyProjects.tsx`, `ProjectMenu.tsx` — project navigation
 - `app/components/GithubConnector.tsx` — connects a project to a GitHub repo for push
 - `app/lib/api.ts`, `app/lib/ws.ts`, `app/lib/github-api.ts` — REST + WebSocket clients
-- `store/project.store.ts` — Zustand store for active project state
+- `store/project.store.ts` —> Zustand store for active project state
 
 ### `apps/backend`
 
